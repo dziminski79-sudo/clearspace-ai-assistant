@@ -24,7 +24,7 @@ something the business never agreed to.
 ## How it works
 
 ```
-Browser (ChatWidget) -> POST /api/chat -> Claude API (with a system prompt
+Browser (ChatWidget) -> POST /api/chat -> Gemini API (with a system prompt
 built from the business's own service list, hours, and policies) -> reply
 ```
 
@@ -35,12 +35,12 @@ prompt engineering required elsewhere.
 ## Tech stack
 
 Next.js (App Router, Route Handlers), TypeScript, Tailwind CSS, the
-Anthropic Claude API.
+Google Gemini API.
 
 ## Run it yourself
 
-1. Copy `.env.example` to `.env.local` and add your own `ANTHROPIC_API_KEY`
-   from [platform.claude.com](https://platform.claude.com).
+1. Copy `.env.example` to `.env.local` and add your own `GEMINI_API_KEY`
+   from [aistudio.google.com](https://aistudio.google.com/apikey) (free tier available).
 2. `npm install` then `npm run dev`.
 3. Without a key, the widget still loads and shows a clear "not configured
    yet" message instead of crashing, so the UI can be reviewed on its own.
