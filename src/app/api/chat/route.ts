@@ -11,7 +11,11 @@ const bodySchema = z.object({
   messages: z.array(messageSchema).min(1).max(20),
 });
 
-const MODEL = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
+const MODELS = [
+  process.env.GEMINI_MODEL || "gemini-3.6-flash",
+  "gemini-flash-latest",
+  "gemini-3.1-flash-lite",
+];
 
 type GeminiResponse = {
   candidates?: { content?: { parts?: { text?: string }[] } }[];
@@ -31,22 +35,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
 
+  const payload = JSON.stringify({
+    systemInstruction: { parts: [{ text: buildSystemPrompt() }] },
+    contents: parsed.data.messages.map((m) => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.content }],
+    })),
+    generationConfig: { maxOutputTokens: 1000, temperature: 0.4 },
+  });
+
+  const call = (model: string) =>
+    fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      body: payload,
+    });
+
   try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: buildSystemPrompt() }] },
-          contents: parsed.data.messages.map((m) => ({
-            role: m.role === "assistant" ? "model" : "user",
-            parts: [{ text: m.content }],
-          })),
-          generationConfig: { maxOutputTokens: 400, temperature: 0.4 },
-        }),
-      },
-    );
+    let res = await call(MODELS[0]);
+    for (const fallback of MODELS.slice(1)) {
+      if (res.status !== 503 && res.status !== 429 && res.status !== 404) break;
+      res = await call(fallback);
+    }
 
     if (!res.ok) {
       console.error("Gemini API error:", res.status, await res.text());
